@@ -5,7 +5,6 @@
 #pragma once
 
 #include "Configuration.hpp"
-#include "JsonArrayData.hpp"
 #include "JsonObjectData.hpp"
 #include "JsonVariant.hpp"
 #include "Numbers/parseFloat.hpp"
@@ -59,5 +58,55 @@ inline typename Internals::enable_if<
     T>::type
 JsonVariant::as() const {
   return _data ? JsonObject(_memoryPool, _data->asObject()) : JsonObject();
+}
+
+inline JsonArray JsonVariant::toArray() {
+  JsonArray array(_memoryPool);
+  set(array);
+  return array;
+}
+
+inline JsonObject JsonVariant::toObject() {
+  JsonObject obj(_memoryPool);
+  set(obj);
+  return obj;
+}
+
+template <typename Visitor>
+inline void JsonVariant::visit(Visitor& visitor) const {
+  using namespace Internals;
+  if (!_data) return visitor.acceptNull();
+
+  switch (_data->type) {
+    case JSON_FLOAT:
+      return visitor.acceptFloat(_data->content.asFloat);
+
+    case JSON_ARRAY:
+      return visitor.acceptArray(
+          JsonArray(_memoryPool, _data->content.asArray));
+
+    case JSON_OBJECT:
+      return visitor.acceptObject(
+          JsonObject(_memoryPool, _data->content.asObject));
+
+    case JSON_STRING:
+      return visitor.acceptString(_data->content.asString);
+
+    case JSON_RAW:
+      return visitor.acceptRawJson(_data->content.asRaw.data,
+                                   _data->content.asRaw.size);
+
+    case JSON_NEGATIVE_INTEGER:
+      return visitor.acceptNegativeInteger(_data->content.asInteger);
+
+    case JSON_POSITIVE_INTEGER:
+      return visitor.acceptPositiveInteger(_data->content.asInteger);
+
+    case JSON_BOOLEAN:
+      return visitor.acceptBoolean(_data->content.asInteger != 0);
+
+    default:
+      return visitor.acceptNull();
+  }
 }
 }  // namespace ArduinoJson

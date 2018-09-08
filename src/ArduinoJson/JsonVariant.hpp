@@ -327,20 +327,22 @@ class JsonVariant : public Internals::JsonVariantBase<JsonVariant> {
     return _data && _data->isObject();
   }
 
-  // Returns true if the variant has a value
   FORCE_INLINE bool isNull() const {
     return _data == 0 || _data->isNull();
   }
 
-  template <typename Visitor>
-  FORCE_INLINE void visit(Visitor &visitor) const {
-    if (_data)
-      _data->visit(visitor);
-    else
-      visitor.acceptNull();
+  FORCE_INLINE bool isInvalid() const {
+    return _data == 0;
   }
 
- private:
+  template <typename Visitor>
+  void visit(Visitor &visitor) const;
+
+  JsonArray toArray();
+  JsonObject toObject();
+
+  // TODO: restore
+  // private:
   Internals::MemoryPool *_memoryPool;
   Internals::JsonVariantData *_data;
 };  // namespace ArduinoJson

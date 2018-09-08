@@ -36,7 +36,7 @@ class MsgPackSerializer {
     }
   }
 
-  void acceptArray(const JsonArrayData& array) {
+  void acceptArray(JsonArray array) {
     size_t n = array.size();
     if (n < 0x10) {
       writeByte(uint8_t(0x90 + array.size()));
@@ -47,13 +47,12 @@ class MsgPackSerializer {
       writeByte(0xDD);
       writeInteger(uint32_t(n));
     }
-    for (JsonArrayData::const_iterator it = array.begin(); it != array.end();
-         ++it) {
+    for (JsonArray::iterator it = array.begin(); it != array.end(); ++it) {
       it->visit(*this);
     }
   }
 
-  void acceptObject(const JsonObjectData& object) {
+  void acceptObject(JsonObject object) {
     size_t n = object.size();
     if (n < 0x10) {
       writeByte(uint8_t(0x80 + n));
@@ -64,10 +63,9 @@ class MsgPackSerializer {
       writeByte(0xDF);
       writeInteger(uint32_t(n));
     }
-    for (JsonObjectData::const_iterator it = object.begin(); it != object.end();
-         ++it) {
-      acceptString(it->key);
-      it->value.visit(*this);
+    for (JsonObject::iterator it = object.begin(); it != object.end(); ++it) {
+      acceptString(it->key());
+      it->value().visit(*this);
     }
   }
 

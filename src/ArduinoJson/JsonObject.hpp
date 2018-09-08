@@ -188,7 +188,7 @@ class JsonObject {
   //          std::string, String, JsonArray, JsonObject
   template <typename TValue, typename TString>
   FORCE_INLINE bool set(const TString& key, const TValue& value) {
-    return set_impl<const TString&, const TValue&>(key, value);
+    return set(key).set(value);
   }
   //
   // bool set(TKey, TValue);
@@ -196,7 +196,7 @@ class JsonObject {
   // TValue = char*, const char*, const FlashStringHelper*
   template <typename TValue, typename TString>
   FORCE_INLINE bool set(const TString& key, TValue* value) {
-    return set_impl<const TString&, TValue*>(key, value);
+    return set(key).set(value);
   }
   //
   // bool set(TKey, const TValue&);
@@ -205,7 +205,7 @@ class JsonObject {
   //          std::string, String, JsonArray, JsonObject
   template <typename TValue, typename TString>
   FORCE_INLINE bool set(TString* key, const TValue& value) {
-    return set_impl<TString*, const TValue&>(key, value);
+    return set(key).set(value);
   }
   //
   // bool set(TKey, TValue);
@@ -213,7 +213,17 @@ class JsonObject {
   // TValue = char*, const char*, const FlashStringHelper*
   template <typename TValue, typename TString>
   FORCE_INLINE bool set(TString* key, TValue* value) {
-    return set_impl<TString*, TValue*>(key, value);
+    return set(key).set(value);
+  }
+
+  template <typename TString>
+  FORCE_INLINE JsonVariant set(TString* key) {
+    return set_impl<TString*>(key);
+  }
+
+  template <typename TString>
+  FORCE_INLINE JsonVariant set(const TString& key) {
+    return set_impl<const TString&>(key);
   }
 
   FORCE_INLINE size_t size() const {
@@ -228,7 +238,7 @@ class JsonObject {
   template <typename Visitor>
   FORCE_INLINE void visit(Visitor& visitor) const {
     if (_data)
-      visitor.acceptObject(*_data);
+      visitor.acceptObject(*this);
     else
       visitor.acceptNull();
   }
@@ -283,12 +293,12 @@ class JsonObject {
     _data->remove(findKey<TStringRef>(key));
   }
 
-  template <typename TStringRef, typename TValueRef>
-  FORCE_INLINE bool set_impl(TStringRef key, TValueRef value) {
-    if (!_data) return false;
+  template <typename TStringRef>
+  FORCE_INLINE JsonVariant set_impl(TStringRef key) {
+    if (!_data) return JsonVariant();
 
     // ignore null key
-    if (Internals::makeString(key).is_null()) return false;
+    if (Internals::makeString(key).is_null()) return JsonVariant();
 
     // search a matching key
     internal_iterator it = findKey<TStringRef>(key);
@@ -296,12 +306,11 @@ class JsonObject {
       // add the key
       // TODO: use JsonPairData directly, we don't need an iterator
       it = _data->add(_memoryPool);
-      if (it == _data->end()) return false;
-      if (!set_key(it, key)) return false;
+      if (it == _data->end()) return JsonVariant();
+      if (!set_key(it, key)) return JsonVariant();
     }
 
-    // save the value
-    return JsonVariant(_memoryPool, &it->value).set(value);
+    return JsonVariant(_memoryPool, &it->value);
   }
 
   FORCE_INLINE bool set_key(internal_iterator& it, const char* key) {
@@ -319,5 +328,5 @@ class JsonObject {
 
   mutable Internals::MemoryPool* _memoryPool;
   mutable Internals::JsonObjectData* _data;
-};
+};  // namespace ArduinoJson
 }  // namespace ArduinoJson

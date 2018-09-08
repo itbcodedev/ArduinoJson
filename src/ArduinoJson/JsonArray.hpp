@@ -4,8 +4,14 @@
 
 #pragma once
 
-#include "JsonArrayData.hpp"
+#include "Data/JsonVariantData.hpp"
 #include "JsonArrayIterator.hpp"
+
+// Returns the size (in bytes) of an array with n elements.
+// Can be very handy to determine the size of a StaticMemoryPool.
+#define JSON_ARRAY_SIZE(NUMBER_OF_ELEMENTS)        \
+  (sizeof(ArduinoJson::Internals::JsonArrayData) + \
+   (NUMBER_OF_ELEMENTS) * sizeof(ArduinoJson::Internals::Slot))
 
 namespace ArduinoJson {
 
@@ -35,19 +41,40 @@ class JsonArray {
   //          std::string, String, JsonArrayData, JsonObject
   template <typename T>
   FORCE_INLINE bool add(const T& value) {
-    return add_impl<const T&>(value);
+    return add().set(value);
   }
   //
   // bool add(TValue);
   // TValue = char*, const char*, const FlashStringHelper*
   template <typename T>
   FORCE_INLINE bool add(T* value) {
-    return add_impl<T*>(value);
+    return add().set(value);
+  }
+
+  JsonVariant add() {
+    if (!_data) return JsonVariant();
+
+    Internals::Slot* slot = new (_memoryPool) Internals::Slot();
+    if (!slot) return JsonVariant();
+
+    slot->next = 0;
+
+    if (_data->tail) {
+      slot->prev = _data->tail;
+      _data->tail->next = slot;
+      _data->tail = slot;
+    } else {
+      slot->prev = 0;
+      _data->head = slot;
+      _data->tail = slot;
+    }
+
+    return JsonVariant(_memoryPool, &slot->value);
   }
 
   FORCE_INLINE iterator begin() const {
     if (!_data) return iterator();
-    return iterator(_memoryPool, _data->begin());
+    return iterator(_memoryPool, _data->head);
   }
 
   FORCE_INLINE iterator end() const {
@@ -137,7 +164,18 @@ class JsonArray {
   // Removes element at specified position.
   FORCE_INLINE void remove(iterator it) {
     if (!_data) return;
-    _data->remove(it.internal());
+
+    Internals::Slot* slot = it.internal();
+    if (!slot) return;
+
+    if (slot->prev)
+      slot->prev->next = slot->next;
+    else
+      _data->head = slot->next;
+    if (slot->next)
+      slot->next->prev = slot->prev;
+    else
+      _data->tail = slot->prev;
   }
 
   // Removes element at specified index.
@@ -166,7 +204,13 @@ class JsonArray {
 
   FORCE_INLINE size_t size() const {
     if (!_data) return 0;
-    return _data->size();
+    Internals::Slot* slot = _data->head;
+    size_t n = 0;
+    while (slot) {
+      slot = slot->next;
+      n++;
+    }
+    return n;
   }
 
   FORCE_INLINE bool isNull() const {
@@ -176,7 +220,7 @@ class JsonArray {
   template <typename Visitor>
   FORCE_INLINE void visit(Visitor& visitor) const {
     if (_data)
-      visitor.acceptArray(*_data);
+      visitor.acceptArray(*this);
     else
       visitor.acceptNull();
   }
@@ -191,10 +235,7 @@ class JsonArray {
 
   template <typename TValueRef>
   FORCE_INLINE bool add_impl(TValueRef value) {
-    if (!_data) return false;
-    iterator it = iterator(_memoryPool, _data->add(_memoryPool));
-    if (it == end()) return false;
-    return it->set(value);
+    return add().set(value);
   }
 
   Internals::MemoryPool* _memoryPool;

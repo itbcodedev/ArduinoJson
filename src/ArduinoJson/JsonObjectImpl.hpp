@@ -22,9 +22,7 @@ inline JsonArray JsonObject::createNestedArray(TString* key) {
 template <typename TStringRef>
 inline JsonArray JsonObject::createNestedArray_impl(TStringRef key) {
   if (!_data) return JsonArray();
-  JsonArray array(_memoryPool);
-  if (!array.isNull()) set(key, array);
-  return array;
+  return set(key).toArray();
 }
 
 template <typename TStringRef>

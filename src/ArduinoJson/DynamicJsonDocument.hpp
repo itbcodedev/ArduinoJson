@@ -36,9 +36,7 @@ class DynamicJsonDocument {
                                 JsonObject>::type
   to() {
     clear();
-    JsonObject object(&_memoryPool);
-    getVariant().set(object);
-    return object;
+    return getVariant().toObject();
   }
 
   // JsonArray to<JsonArray>()
@@ -47,9 +45,7 @@ class DynamicJsonDocument {
                                 JsonArray>::type
   to() {
     clear();
-    JsonArray array(&_memoryPool);
-    getVariant().set(array);
-    return array;
+    return getVariant().toArray();
   }
 
   // JsonVariant to<JsonVariant>()
@@ -59,16 +55,6 @@ class DynamicJsonDocument {
   to() {
     clear();
     return getVariant();
-  }
-
-  // JsonVariantData& to<JsonVariantData>()
-  template <typename T>
-  typename Internals::enable_if<
-      Internals::is_same<T, Internals::JsonVariantData>::value,
-      Internals::JsonVariantData&>::type
-  to() {
-    clear();
-    return _rootData;
   }
 
   Internals::DynamicMemoryPool& memoryPool() {
@@ -86,7 +72,7 @@ class DynamicJsonDocument {
 
   template <typename Visitor>
   void visit(Visitor& visitor) const {
-    return _rootData.visit(visitor);
+    return getVariant().visit(visitor);
   }
 
  private:
